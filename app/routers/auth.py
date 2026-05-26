@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.catalog import Business
 from app.schemas import BusinessCreate, BusinessOut, Token
-from app.auth import hash_password, verify_password, create_access_token
+from app.auth import hash_password, verify_password, create_access_token, get_current_business
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,3 +62,9 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         )
     token = create_access_token({"sub": str(business.id)})
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=BusinessOut)
+def get_me(current_business: Business = Depends(get_current_business)):
+    """Retorna el negocio autenticado — útil para obtener el slug en el frontend."""
+    return current_business
