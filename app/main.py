@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(products_router)
 app.include_router(catalog_router)
+app.include_router(bot_router)
 
 
 @app.get("/", tags=["health"])
