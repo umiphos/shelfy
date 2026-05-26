@@ -54,6 +54,7 @@ async def messenger_webhook(
     for entry in body.get("object") == "page" and body.get("entry", []) or []:
         for event in entry.get("messaging", []):
             sender_id = event.get("sender", {}).get("id")
+            print(f"DEBUG messenger_id: {sender_id}")
             message = event.get("message", {})
             text = message.get("text", "").strip()
 
