@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
-from app.routers import auth_router, products_router, catalog_router, bot_router
+from app.routers import auth_router, products_router, catalog_router, bot_router, messenger_router
 
 
 @asynccontextmanager
@@ -14,8 +14,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
     title="Catalog API",
-    description="API para catálogos de negocios locales. Actualizable vía WhatsApp bot.",
-    version="0.1.0",
+    description="API para catálogos de negocios locales. Actualizable vía WhatsApp y Messenger.",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )

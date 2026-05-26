@@ -21,6 +21,9 @@ class Business(Base):
     email = Column(String(200), unique=True, index=True, nullable=False)
     hashed_password = Column(String(200), nullable=False)
 
+    # Messenger
+    messenger_id = Column(String(100), unique=True, nullable=True, index=True)
+
     # Relationship
     products = relationship("Product", back_populates="business", cascade="all, delete-orphan")
 

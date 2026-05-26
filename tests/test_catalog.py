@@ -2,35 +2,8 @@
 Tests para Catalog API
 Run: pytest tests/ -v
 """
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from app.main import app
-from app.database import Base, get_db
-
-# ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
-SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
 
 client = TestClient(app)
 
@@ -64,11 +37,11 @@ class TestAuth:
         data = r.json()
         assert data["email"] == "mary@test.com"
         assert data["slug"] == "tacos-mary"
-        assert "hashed_password" not in data  # nunca exponer
+        assert "hashed_password" not in data
 
     def test_register_duplicate_email_fails(self):
         register_business()
-        r = register_business()  # mismo email
+        r = register_business()
         assert r.status_code == 400
         assert "already registered" in r.json()["detail"]
 
