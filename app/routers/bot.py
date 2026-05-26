@@ -168,6 +168,7 @@ async def whatsapp_webhook(
     """
     # Extraer número limpio
     phone = From.replace("whatsapp:", "").strip()
+    print(f"DEBUG phone recibido: '{phone}'")
 
     # Buscar el negocio por número de WhatsApp
     business = (
