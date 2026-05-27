@@ -3,20 +3,20 @@ Bot de Facebook Messenger
 --------------------------
 Reutiliza la misma lógica de comandos del bot de WhatsApp.
 Comandos disponibles:
+  vincular <email>             → vincula tu Messenger a tu cuenta
   agregar <nombre> <precio>    → crea producto
   agotado <id>                 → marca como no disponible
   disponible <id>              → marca como disponible
   mis productos                → lista productos
   ayuda                        → menú de comandos
 """
-import os
 import httpx
 from fastapi import APIRouter, Request, Query, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.catalog import Business
-from app.routers.bot import parse_command, handle_command
+from app.routers.bot import parse_command, handle_command, handle_vincular
 from app.config import settings
 
 router = APIRouter(prefix="/bot", tags=["messenger bot"])
@@ -60,7 +60,14 @@ async def messenger_webhook(
             if not sender_id or not text:
                 continue
 
-            # Buscar negocio por messenger_id
+            # Comando vincular — no requiere estar registrado
+            cmd = parse_command(text)
+            if cmd["action"] == "vincular":
+                response_text = handle_vincular(cmd["email"], sender_id, "messenger", db)
+                await send_message(sender_id, response_text)
+                continue
+
+            # Para el resto, buscar negocio por messenger_id
             business = (
                 db.query(Business)
                 .filter(

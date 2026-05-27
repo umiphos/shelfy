@@ -2,6 +2,7 @@
 Bot de WhatsApp via Twilio
 --------------------------
 Comandos disponibles:
+  vincular <email>             → vincula tu número de WhatsApp a tu cuenta
   agregar <nombre> <precio>    → crea producto
   agotado <id>                 → marca como no disponible
   disponible <id>              → marca como disponible
@@ -19,7 +20,10 @@ router = APIRouter(prefix="/bot", tags=["whatsapp bot"])
 
 # ── Respuestas del bot ────────────────────────────────────────────────────────
 
-HELP_MSG = """🤖 *Shelfy Bot* — Comandos disponibles:
+HELP_MSG = """🤖 *PrecioInbox Bot* — Comandos disponibles:
+
+🔗 *vincular <tu-email>*
+  Ej: vincular mary@tacos.com
 
 📦 *agregar <nombre> <precio>*
   Ej: agregar Taco de canasta 15
@@ -51,12 +55,16 @@ def twiml_response(message: str) -> PlainTextResponse:
 def parse_command(text: str) -> dict:
     """
     Devuelve: {"action": str, ...params}
-    Acciones: agregar, agotado, disponible, listar, ayuda, desconocido
+    Acciones: vincular, agregar, agotado, disponible, listar, ayuda, desconocido
     """
     text = text.strip().lower()
 
+    # vincular <email>
+    match = re.match(r"vincular\s+(\S+@\S+\.\S+)$", text)
+    if match:
+        return {"action": "vincular", "email": match.group(1).strip()}
+
     # agregar <nombre> <precio>
-    # El precio es el último token, el nombre es todo lo del medio
     match = re.match(r"agregar\s+(.+?)\s+(\d+(?:\.\d{1,2})?)$", text)
     if match:
         return {
@@ -80,7 +88,7 @@ def parse_command(text: str) -> dict:
         return {"action": "listar"}
 
     # ayuda
-    if text in ("ayuda", "ayuda", "help", "hola", "inicio", "menu", "menú", "start"):
+    if text in ("ayuda", "help", "hola", "inicio", "menu", "menú", "start"):
         return {"action": "ayuda"}
 
     return {"action": "desconocido", "text": text}
@@ -153,7 +161,55 @@ def handle_command(cmd: dict, business: Business, db: Session) -> str:
     )
 
 
-# ── Webhook endpoint ──────────────────────────────────────────────────────────
+# ── Lógica de vinculación (compartida con Messenger y WhatsApp) ───────────────
+
+def handle_vincular(email: str, contact_id: str, contact_type: str, db: Session) -> str:
+    """
+    contact_type: "whatsapp" | "messenger"
+    contact_id:   el número de teléfono o el messenger_id
+    """
+    business = (
+        db.query(Business)
+        .filter(Business.email == email, Business.is_active == True)
+        .first()
+    )
+
+    if not business:
+        return (
+            "❌ No encontré una cuenta con ese email.\n"
+            "Regístrate en www.precioinbox.com primero."
+        )
+
+    if contact_type == "whatsapp":
+        # Verificar que no esté vinculado a otra cuenta
+        existing = (
+            db.query(Business)
+            .filter(Business.whatsapp_number == contact_id, Business.id != business.id)
+            .first()
+        )
+        if existing:
+            return "❌ Este número ya está vinculado a otra cuenta."
+        business.whatsapp_number = contact_id
+
+    elif contact_type == "messenger":
+        existing = (
+            db.query(Business)
+            .filter(Business.messenger_id == contact_id, Business.id != business.id)
+            .first()
+        )
+        if existing:
+            return "❌ Este Messenger ya está vinculado a otra cuenta."
+        business.messenger_id = contact_id
+
+    db.commit()
+    return (
+        f"✅ ¡Cuenta vinculada!\n"
+        f"*{business.name}* conectado correctamente.\n\n"
+        f"Escribe *ayuda* para ver los comandos disponibles."
+    )
+
+
+# ── Webhook endpoint (WhatsApp/Twilio) ───────────────────────────────────────
 
 @router.post("/message", response_class=PlainTextResponse)
 async def whatsapp_webhook(
@@ -162,14 +218,16 @@ async def whatsapp_webhook(
     Body: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    """
-    Twilio llama este endpoint cuando el dueño manda un mensaje.
-    'From' viene como 'whatsapp:+523121234567'
-    """
-    # Extraer número limpio
     phone = From.replace("whatsapp:", "").strip()
+    text = Body.strip()
 
-    # Buscar el negocio por número de WhatsApp
+    # Comando vincular — no requiere estar registrado
+    cmd = parse_command(text)
+    if cmd["action"] == "vincular":
+        response_text = handle_vincular(cmd["email"], phone, "whatsapp", db)
+        return twiml_response(response_text)
+
+    # Para el resto de comandos, buscar negocio por número
     business = (
         db.query(Business)
         .filter(Business.whatsapp_number == phone, Business.is_active == True)
@@ -178,12 +236,12 @@ async def whatsapp_webhook(
 
     if not business:
         return twiml_response(
-            "❌ Tu número no está registrado en Shelfy.\n"
-            "Regístrate en shelfy.com para usar el bot."
+            "👋 Bienvenido a PrecioInbox.\n\n"
+            "Para vincular tu cuenta escribe:\n"
+            "*vincular tu@email.com*\n\n"
+            "Si no tienes cuenta, regístrate en:\n"
+            "www.precioinbox.com"
         )
 
-    # Parsear y ejecutar comando
-    cmd = parse_command(Body)
     response_text = handle_command(cmd, business, db)
-
     return twiml_response(response_text)
