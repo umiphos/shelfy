@@ -32,10 +32,6 @@ async def verify_webhook(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
 ):
-    """
-    Meta llama este endpoint para verificar que el servidor es tuyo.
-    Compara hub.verify_token con tu MESSENGER_VERIFY_TOKEN.
-    """
     if hub_mode == "subscribe" and hub_verify_token == settings.MESSENGER_VERIFY_TOKEN:
         return PlainTextResponse(content=hub_challenge)
     raise HTTPException(status_code=403, detail="Verify token mismatch")
@@ -50,7 +46,6 @@ async def messenger_webhook(
 ):
     body = await request.json()
 
-    # Meta manda un array de entries con mensajes
     for entry in body.get("object") == "page" and body.get("entry", []) or []:
         for event in entry.get("messaging", []):
             sender_id = event.get("sender", {}).get("id")
@@ -79,23 +74,23 @@ async def messenger_webhook(
 
             if not business:
                 await send_message(sender_id, (
-                    "❌ Tu cuenta no está registrada en Shelfy.\n"
-                    "Regístrate en shelfy.com para usar el bot."
+                    "👋 Bienvenido a PrecioInbox.\n\n"
+                    "Para vincular tu cuenta escribe:\n"
+                    "vincular tu@email.com\n\n"
+                    "Si no tienes cuenta, regístrate en:\n"
+                    "www.precioinbox.com"
                 ))
                 continue
 
-            cmd = parse_command(text)
             response_text = handle_command(cmd, business, db)
             await send_message(sender_id, response_text)
 
-    # Meta espera siempre 200 OK inmediato
     return {"status": "ok"}
 
 
 # ── Enviar mensaje de vuelta ──────────────────────────────────────────────────
 
 async def send_message(recipient_id: str, text: str):
-    """Llama a la Graph API para responder al usuario."""
     async with httpx.AsyncClient() as client:
         await client.post(
             MESSENGER_API,

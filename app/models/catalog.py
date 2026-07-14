@@ -14,6 +14,7 @@ class Business(Base):
     whatsapp_number = Column(String(20), nullable=True)
     logo_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
+    max_products = Column(Integer, nullable=False, server_default="50", default=50)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

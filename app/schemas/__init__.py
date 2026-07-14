@@ -57,6 +57,7 @@ class BusinessCreate(BusinessBase):
     email: EmailStr
     password: str
     slug: Optional[str] = None  # auto-generated if not provided
+    max_products: Optional[int] = None  # falls back to model default if unset
 
     @field_validator("password")
     @classmethod
@@ -71,6 +72,7 @@ class BusinessUpdate(BaseModel):
     description: Optional[str] = None
     whatsapp_number: Optional[str] = None
     logo_url: Optional[str] = None
+    max_products: Optional[int] = None
 
 
 class BusinessOut(BusinessBase):
@@ -78,6 +80,7 @@ class BusinessOut(BusinessBase):
     slug: str
     email: str
     is_active: bool
+    max_products: int
     created_at: datetime
     products: List[ProductOut] = []
 
