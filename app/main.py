@@ -37,6 +37,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CatalogRequest(BaseModel):
+    name: str
+    user_id: int
+
+
 def get_db():
     db = SessionLocal()
 
@@ -133,8 +138,75 @@ def login(
     }
 
 
-@app.get("/api/users")
-def users(
+@app.get("/api/catalogs/{user_id}")
+def get_catalog(
+    user_id: int,
     db: Session = Depends(get_db),
 ):
-    return db.query(models.User).all()
+    catalog = (
+        db.query(models.Catalog)
+        .filter(models.Catalog.user_id == user_id)
+        .first()
+    )
+
+    if not catalog:
+        return None
+
+    return {
+        "id": catalog.id,
+        "name": catalog.name,
+        "user_id": catalog.user_id,
+    }
+
+
+@app.post("/api/catalogs")
+def create_catalog(
+    data: CatalogRequest,
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == data.user_id)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado",
+        )
+
+    existing_catalog = (
+        db.query(models.Catalog)
+        .filter(models.Catalog.user_id == data.user_id)
+        .first()
+    )
+
+    if existing_catalog:
+        raise HTTPException(
+            status_code=400,
+            detail="El usuario ya tiene un catálogo",
+        )
+
+    name = data.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="El nombre del catálogo es obligatorio",
+        )
+
+    catalog = models.Catalog(
+        name=name,
+        user_id=data.user_id,
+    )
+
+    db.add(catalog)
+    db.commit()
+    db.refresh(catalog)
+
+    return {
+        "id": catalog.id,
+        "name": catalog.name,
+        "user_id": catalog.user_id,
+    }
