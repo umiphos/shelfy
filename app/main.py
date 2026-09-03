@@ -1,17 +1,19 @@
-from fastapi import Depends, FastAPI
+import bcrypt
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from passlib.context import CryptContext
 
 from . import models
 from .database import Base, SessionLocal, engine
 
+
 Base.metadata.create_all(bind=engine)
 
+
 app = FastAPI(title="CATÁLOGO API")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,8 +32,14 @@ class RegisterRequest(BaseModel):
     password: str
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
@@ -40,12 +48,16 @@ def get_db():
 
 @app.get("/")
 def root():
-    return {"message": "CATÁLOGO API funcionando"}
+    return {
+        "message": "CATÁLOGO API funcionando"
+    }
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok"
+    }
 
 
 @app.post("/api/register")
@@ -53,9 +65,11 @@ def register(
     data: RegisterRequest,
     db: Session = Depends(get_db),
 ):
-    existing_user = db.query(models.User).filter(
-        models.User.email == data.email
-    ).first()
+    existing_user = (
+        db.query(models.User)
+        .filter(models.User.email == data.email)
+        .first()
+    )
 
     if existing_user:
         raise HTTPException(
@@ -63,9 +77,14 @@ def register(
             detail="El correo ya está registrado",
         )
 
+    hashed_password = bcrypt.hashpw(
+        data.password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
+
     user = models.User(
         email=data.email,
-        password=pwd_context.hash(data.password),
+        password=hashed_password,
     )
 
     db.add(user)
@@ -79,6 +98,43 @@ def register(
     }
 
 
+@app.post("/api/login")
+def login(
+    data: LoginRequest,
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == data.email)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Correo o contraseña incorrectos",
+        )
+
+    password_valid = bcrypt.checkpw(
+        data.password.encode("utf-8"),
+        user.password.encode("utf-8"),
+    )
+
+    if not password_valid:
+        raise HTTPException(
+            status_code=401,
+            detail="Correo o contraseña incorrectos",
+        )
+
+    return {
+        "message": "Login correcto",
+        "id": user.id,
+        "email": user.email,
+    }
+
+
 @app.get("/api/users")
-def users(db: Session = Depends(get_db)):
+def users(
+    db: Session = Depends(get_db),
+):
     return db.query(models.User).all()
