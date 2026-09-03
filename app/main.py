@@ -1,6 +1,19 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 app = FastAPI(title="CATÁLOGO API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
 
 
 @app.get("/")
@@ -11,3 +24,11 @@ def root():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/api/register")
+def register(data: RegisterRequest):
+    return {
+        "message": "Registro recibido",
+        "email": data.email,
+    }
