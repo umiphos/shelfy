@@ -41,6 +41,18 @@ class CatalogRequest(BaseModel):
     name: str
     user_id: int
 
+class ProductRequest(BaseModel):
+    catalog_id: int
+    name: str
+    price: float
+    category: str
+    quantity: int
+    description: str | None = None
+    characteristics: str | None = None
+    color: str | None = None
+    size: str | None = None
+    shipping: bool = False
+    whatsapp: str | None = None
 
 def get_db():
     db = SessionLocal()
@@ -209,4 +221,163 @@ def create_catalog(
         "id": catalog.id,
         "name": catalog.name,
         "user_id": catalog.user_id,
+    }
+
+@app.get("/api/products/{catalog_id}")
+def get_products(
+    catalog_id: int,
+    db: Session = Depends(get_db),
+):
+    products = (
+        db.query(models.Product)
+        .filter(
+            models.Product.catalog_id == catalog_id
+        )
+        .all()
+    )
+
+    return products
+
+
+@app.post("/api/products")
+def create_product(
+    data: ProductRequest,
+    db: Session = Depends(get_db),
+):
+    catalog = (
+        db.query(models.Catalog)
+        .filter(
+            models.Catalog.id == data.catalog_id
+        )
+        .first()
+    )
+
+    if not catalog:
+        raise HTTPException(
+            status_code=404,
+            detail="Catálogo no encontrado",
+        )
+
+    if data.price <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="El precio debe ser mayor que cero",
+        )
+
+    if data.quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La cantidad no puede ser negativa",
+        )
+
+    product = models.Product(
+        catalog_id=data.catalog_id,
+        name=data.name.strip(),
+        price=data.price,
+        category=data.category.strip(),
+        quantity=data.quantity,
+        description=data.description,
+        characteristics=data.characteristics,
+        color=data.color,
+        size=data.size,
+        shipping=data.shipping,
+        whatsapp=data.whatsapp,
+    )
+
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    return product
+
+
+@app.get("/api/products/item/{product_id}")
+def get_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado",
+        )
+
+    return product
+
+
+@app.put("/api/products/{product_id}")
+def update_product(
+    product_id: int,
+    data: ProductRequest,
+    db: Session = Depends(get_db),
+):
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado",
+        )
+
+    if data.price <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="El precio debe ser mayor que cero",
+        )
+
+    if data.quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La cantidad no puede ser negativa",
+        )
+
+    product.name = data.name.strip()
+    product.price = data.price
+    product.category = data.category.strip()
+    product.quantity = data.quantity
+    product.description = data.description
+    product.characteristics = data.characteristics
+    product.color = data.color
+    product.size = data.size
+    product.shipping = data.shipping
+    product.whatsapp = data.whatsapp
+
+    db.commit()
+    db.refresh(product)
+
+    return product
+
+
+@app.delete("/api/products/{product_id}")
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado",
+        )
+
+    db.delete(product)
+    db.commit()
+
+    return {
+        "message": "Producto eliminado"
     }

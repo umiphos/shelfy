@@ -40,3 +40,65 @@ class Catalog(Base):
         unique=True,
         nullable=False,
     )
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+    )
+
+    catalog_id: Mapped[int] = mapped_column(
+        ForeignKey("catalogs.id"),
+        nullable=False,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    price: Mapped[float] = mapped_column(
+        nullable=False,
+    )
+
+    category: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    quantity: Mapped[int] = mapped_column(
+        nullable=False,
+    )
+
+    description: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    characteristics: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    color: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    size: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    shipping: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+    )
+
+    whatsapp: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
