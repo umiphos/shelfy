@@ -102,3 +102,27 @@ class Product(Base):
         String,
         nullable=True,
     )
+
+class ProductImage(Base):
+    __tablename__ = "product_images"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+    )
+
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id"),
+        nullable=False,
+        index=True,
+    )
+
+    filename: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    position: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+    )

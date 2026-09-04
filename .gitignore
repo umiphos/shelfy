@@ -41,6 +41,6 @@ Thumbs.db
 
 # Data
 *.db
-
+uploads/
 # Migrations (opcional: comenta si quieres versionar migraciones)
 # alembic/versions/

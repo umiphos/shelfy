@@ -7,13 +7,23 @@ from sqlalchemy.orm import Session
 
 from . import models
 from .database import Base, SessionLocal, engine
+from pathlib import Path
 
+from fastapi import File, UploadFile
+from fastapi.staticfiles import StaticFiles
 
 Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(title="CATÁLOGO API")
+UPLOAD_DIR = Path("uploads/products")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -381,3 +391,110 @@ def delete_product(
     return {
         "message": "Producto eliminado"
     }
+
+@app.post("/api/products/{product_id}/images")
+async def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado",
+        )
+
+    image_count = (
+        db.query(models.ProductImage)
+        .filter(
+            models.ProductImage.product_id == product_id
+        )
+        .count()
+    )
+
+    if image_count >= 5:
+        raise HTTPException(
+            status_code=400,
+            detail="El producto permite máximo 5 imágenes",
+        )
+
+    allowed_types = {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    }
+
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Formato de imagen no permitido",
+        )
+
+    extension = Path(file.filename or "").suffix.lower()
+
+    filename = (
+        f"{product_id}_"
+        f"{image_count + 1}"
+        f"{extension}"
+    )
+
+    filepath = UPLOAD_DIR / filename
+
+    contents = await file.read()
+
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail="La imagen no puede superar 2 MB",
+        )
+
+    filepath.write_bytes(contents)
+
+    image = models.ProductImage(
+        product_id=product_id,
+        filename=filename,
+        position=image_count,
+    )
+
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+
+    return {
+        "id": image.id,
+        "product_id": image.product_id,
+        "filename": image.filename,
+        "position": image.position,
+        "url": f"/uploads/products/{filename}",
+    }
+
+
+@app.get("/api/products/{product_id}/images")
+def get_product_images(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
+    images = (
+        db.query(models.ProductImage)
+        .filter(
+            models.ProductImage.product_id == product_id
+        )
+        .order_by(models.ProductImage.position)
+        .all()
+    )
+
+    return [
+        {
+            "id": image.id,
+            "filename": image.filename,
+            "position": image.position,
+            "url": f"/uploads/products/{image.filename}",
+        }
+        for image in images
+    ]
