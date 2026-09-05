@@ -385,6 +385,22 @@ def delete_product(
             detail="Producto no encontrado",
         )
 
+    images = (
+        db.query(models.ProductImage)
+        .filter(
+            models.ProductImage.product_id == product_id
+        )
+        .all()
+    )
+
+    for image in images:
+        filepath = UPLOAD_DIR / image.filename
+
+        if filepath.exists():
+            filepath.unlink()
+
+        db.delete(image)
+
     db.delete(product)
     db.commit()
 
@@ -498,3 +514,34 @@ def get_product_images(
         }
         for image in images
     ]
+
+@app.delete("/api/products/images/{image_id}")
+def delete_product_image(
+    image_id: int,
+    db: Session = Depends(get_db),
+):
+    image = (
+        db.query(models.ProductImage)
+        .filter(
+            models.ProductImage.id == image_id
+        )
+        .first()
+    )
+
+    if not image:
+        raise HTTPException(
+            status_code=404,
+            detail="Imagen no encontrada",
+        )
+
+    filepath = UPLOAD_DIR / image.filename
+
+    if filepath.exists():
+        filepath.unlink()
+
+    db.delete(image)
+    db.commit()
+
+    return {
+        "message": "Imagen eliminada"
+    }
