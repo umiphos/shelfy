@@ -12,6 +12,9 @@ from pathlib import Path
 from fastapi import File, UploadFile
 from fastapi.staticfiles import StaticFiles
 
+import re
+import unicodedata
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -177,6 +180,7 @@ def get_catalog(
     return {
         "id": catalog.id,
         "name": catalog.name,
+        "slug": catalog.slug,
         "user_id": catalog.user_id,
     }
 
@@ -200,7 +204,9 @@ def create_catalog(
 
     existing_catalog = (
         db.query(models.Catalog)
-        .filter(models.Catalog.user_id == data.user_id)
+        .filter(
+            models.Catalog.user_id == data.user_id
+        )
         .first()
     )
 
@@ -218,8 +224,28 @@ def create_catalog(
             detail="El nombre del catálogo es obligatorio",
         )
 
+    base_slug = generate_slug(name)
+
+    if not base_slug:
+        raise HTTPException(
+            status_code=400,
+            detail="El nombre del catálogo no permite generar una URL válida",
+        )
+
+    slug = base_slug
+    counter = 2
+
+    while (
+        db.query(models.Catalog)
+        .filter(models.Catalog.slug == slug)
+        .first()
+    ):
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
     catalog = models.Catalog(
         name=name,
+        slug=slug,
         user_id=data.user_id,
     )
 
@@ -230,8 +256,56 @@ def create_catalog(
     return {
         "id": catalog.id,
         "name": catalog.name,
+        "slug": catalog.slug,
         "user_id": catalog.user_id,
     }
+
+
+@app.get("/api/catalogs/public/{slug}")
+def get_public_catalog(
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    catalog = (
+        db.query(models.Catalog)
+        .filter(models.Catalog.slug == slug)
+        .first()
+    )
+
+    if not catalog:
+        raise HTTPException(
+            status_code=404,
+            detail="Catálogo no encontrado",
+        )
+
+    return {
+        "id": catalog.id,
+        "name": catalog.name,
+        "slug": catalog.slug,
+    }
+
+
+def generate_slug(name: str) -> str:
+    text = unicodedata.normalize(
+        "NFKD",
+        name,
+    ).encode(
+        "ascii",
+        "ignore",
+    ).decode(
+        "ascii",
+    )
+
+    text = text.lower()
+    text = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        text,
+    )
+    text = text.strip("-")
+
+    return text
+
 
 @app.get("/api/products/{catalog_id}")
 def get_products(

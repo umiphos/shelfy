@@ -35,6 +35,13 @@ class Catalog(Base):
         String,
     )
 
+    slug: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
         unique=True,
