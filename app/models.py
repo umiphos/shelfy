@@ -80,6 +80,13 @@ class Product(Base):
         nullable=False,
     )
 
+    status: Mapped[str] = mapped_column(
+        String,
+        default="available",
+        nullable=False,
+    )
+
+
     description: Mapped[str | None] = mapped_column(
         String,
         nullable=True,

@@ -60,6 +60,7 @@ class ProductRequest(BaseModel):
     price: float
     category: str
     quantity: int
+    status: str = "available"
     description: str | None = None
     characteristics: str | None = None
     color: str | None = None
@@ -348,10 +349,20 @@ def create_product(
             detail="El precio debe ser mayor que cero",
         )
 
-    if data.quantity < 0:
+    if data.quantity <= 0:
         raise HTTPException(
             status_code=400,
-            detail="La cantidad no puede ser negativa",
+            detail="La cantidad debe ser mayor que cero",
+        )
+
+    if data.status not in {
+        "available",
+        "sold_out",
+        "hidden",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail="Estado de producto no válido",
         )
 
     product = models.Product(
@@ -360,6 +371,7 @@ def create_product(
         price=data.price,
         category=data.category.strip(),
         quantity=data.quantity,
+        status=data.status,
         description=data.description,
         characteristics=data.characteristics,
         color=data.color,
@@ -419,16 +431,27 @@ def update_product(
             detail="El precio debe ser mayor que cero",
         )
 
-    if data.quantity < 0:
+    if data.status not in {
+    "available",
+    "sold_out",
+    "hidden",
+}:
         raise HTTPException(
             status_code=400,
-            detail="La cantidad no puede ser negativa",
+            detail="Estado de producto no válido",
+        )
+
+    if data.quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La cantidad debe ser mayor que cero",
         )
 
     product.name = data.name.strip()
     product.price = data.price
     product.category = data.category.strip()
     product.quantity = data.quantity
+    product.status = data.status
     product.description = data.description
     product.characteristics = data.characteristics
     product.color = data.color
