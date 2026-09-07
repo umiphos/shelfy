@@ -71,9 +71,10 @@ class Product(Base):
         nullable=False,
     )
 
-    category: Mapped[str] = mapped_column(
-        String,
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id"),
         nullable=False,
+        index=True,
     )
 
     quantity: Mapped[int] = mapped_column(
@@ -139,4 +140,23 @@ class ProductImage(Base):
     position: Mapped[int] = mapped_column(
         nullable=False,
         default=0,
+    )
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        nullable=False,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        default=True,
+        nullable=False,
     )

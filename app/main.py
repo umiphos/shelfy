@@ -18,6 +18,32 @@ import unicodedata
 Base.metadata.create_all(bind=engine)
 
 
+def ensure_default_category():
+    db = SessionLocal()
+
+    try:
+        category = (
+            db.query(models.Category)
+            .filter(
+                models.Category.name == "General / Otros"
+            )
+            .first()
+        )
+
+        if not category:
+            category = models.Category(
+                name="General / Otros",
+                active=True,
+            )
+
+            db.add(category)
+            db.commit()
+    finally:
+        db.close()
+
+
+ensure_default_category()
+
 app = FastAPI(title="CATÁLOGO API")
 UPLOAD_DIR = Path("uploads/products")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,7 +84,7 @@ class ProductRequest(BaseModel):
     catalog_id: int
     name: str
     price: float
-    category: str
+    category_id: int
     quantity: int
     status: str = "available"
     description: str | None = None
@@ -67,6 +93,9 @@ class ProductRequest(BaseModel):
     size: str | None = None
     shipping: bool = False
     whatsapp: str | None = None
+
+class CategoryRequest(BaseModel):
+    name: str
 
 def get_db():
     db = SessionLocal()
@@ -365,11 +394,26 @@ def create_product(
             detail="Estado de producto no válido",
         )
 
+    category = (
+        db.query(models.Category)
+        .filter(
+            models.Category.id == data.category_id,
+            models.Category.active == True,
+        )
+        .first()
+    )
+
+    if not category:
+        raise HTTPException(
+            status_code=400,
+            detail="Categoría no válida",
+        )
+
     product = models.Product(
         catalog_id=data.catalog_id,
         name=data.name.strip(),
         price=data.price,
-        category=data.category.strip(),
+        category_id=data.category_id,
         quantity=data.quantity,
         status=data.status,
         description=data.description,
@@ -432,10 +476,10 @@ def update_product(
         )
 
     if data.status not in {
-    "available",
-    "sold_out",
-    "hidden",
-}:
+        "available",
+        "sold_out",
+        "hidden",
+    }:
         raise HTTPException(
             status_code=400,
             detail="Estado de producto no válido",
@@ -447,9 +491,24 @@ def update_product(
             detail="La cantidad debe ser mayor que cero",
         )
 
+    category = (
+        db.query(models.Category)
+        .filter(
+            models.Category.id == data.category_id,
+            models.Category.active == True,
+        )
+        .first()
+    )
+
+    if not category:
+        raise HTTPException(
+            status_code=400,
+            detail="Categoría no válida",
+        )
+
     product.name = data.name.strip()
     product.price = data.price
-    product.category = data.category.strip()
+    product.category_id = data.category_id
     product.quantity = data.quantity
     product.status = data.status
     product.description = data.description
@@ -612,6 +671,7 @@ def get_product_images(
         for image in images
     ]
 
+
 @app.delete("/api/products/images/{image_id}")
 def delete_product_image(
     image_id: int,
@@ -642,3 +702,54 @@ def delete_product_image(
     return {
         "message": "Imagen eliminada"
     }
+
+
+@app.get("/api/categories")
+def get_categories(
+    db: Session = Depends(get_db),
+):
+    categories = (
+        db.query(models.Category)
+        .filter(models.Category.active == True)
+        .order_by(models.Category.name)
+        .all()
+    )
+
+    return categories
+
+
+@app.post("/api/categories")
+def create_category(
+    data: CategoryRequest,
+    db: Session = Depends(get_db),
+):
+    name = data.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="El nombre de la categoría es obligatorio",
+        )
+
+    existing_category = (
+        db.query(models.Category)
+        .filter(models.Category.name == name)
+        .first()
+    )
+
+    if existing_category:
+        raise HTTPException(
+            status_code=400,
+            detail="La categoría ya existe",
+        )
+
+    category = models.Category(
+        name=name,
+        active=True,
+    )
+
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+
+    return category
