@@ -16,7 +16,7 @@ services:
 
   backend:
     build:
-      context: ./backend/shelfy
+      context: .
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
