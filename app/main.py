@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import File, UploadFile
 from fastapi.staticfiles import StaticFiles
 
+import os
 import re
 import unicodedata
 
@@ -54,17 +55,24 @@ app.mount(
     name="uploads",
 )
 
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
+
+cors_origins = [
+    origin.strip()
+    for origin in CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 class RegisterRequest(BaseModel):
     email: str
