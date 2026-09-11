@@ -32,24 +32,10 @@ services:
         aliases:
           - backend
 
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - backend
 
 volumes:
   postgres_data:
   uploads_data:
-  caddy_data:
-  caddy_config:
 
 networks:
   proxy_network:
