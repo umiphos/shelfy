@@ -13,6 +13,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    services:
+      backend:
+        networks:
+          default:
+          proxy_network:
+            aliases:
+              - backend
+
+networks:
+  proxy_network:
+    external: true
+    name: proxy_network
 
   backend:
     build:
