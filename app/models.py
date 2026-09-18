@@ -48,6 +48,7 @@ class Catalog(Base):
         nullable=False,
     )
 
+
 class Product(Base):
     __tablename__ = "products"
 
@@ -87,7 +88,6 @@ class Product(Base):
         nullable=False,
     )
 
-
     description: Mapped[str | None] = mapped_column(
         String,
         nullable=True,
@@ -118,6 +118,7 @@ class Product(Base):
         nullable=True,
     )
 
+
 class ProductImage(Base):
     __tablename__ = "product_images"
 
@@ -141,6 +142,7 @@ class ProductImage(Base):
         nullable=False,
         default=0,
     )
+
 
 class Category(Base):
     __tablename__ = "categories"
