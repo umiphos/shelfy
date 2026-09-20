@@ -11,6 +11,39 @@ MAX_IMAGE_SIZE = 2 * 1024 * 1024
 MAX_IMAGES_PER_PRODUCT = 5
 
 
+def _require_owned_product(
+    product_id: int,
+    user: models.User,
+    db: Session,
+) -> models.Product:
+    product = (
+        db.query(models.Product)
+        .join(models.Catalog, models.Product.catalog_id == models.Catalog.id)
+        .filter(
+            models.Product.id == product_id,
+            models.Catalog.user_id == user.id,
+        )
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return product
+
+
+def _require_public_product(product_id: int, db: Session) -> models.Product:
+    product = (
+        db.query(models.Product)
+        .filter(
+            models.Product.id == product_id,
+            models.Product.status != "hidden",
+        )
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return product
+
+
 def delete_image_file(filename: str) -> None:
     filepath = settings.product_upload_dir / filename
     if filepath.exists():
@@ -20,10 +53,10 @@ def delete_image_file(filename: str) -> None:
 async def save_product_image(
     product_id: int,
     file: UploadFile,
+    user: models.User,
     db: Session,
 ) -> models.ProductImage:
-    if not db.query(models.Product).filter(models.Product.id == product_id).first():
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    _require_owned_product(product_id, user, db)
 
     image_count = (
         db.query(models.ProductImage)
@@ -57,21 +90,39 @@ async def save_product_image(
     return image
 
 
-def delete_product_image(image_id: int, db: Session) -> None:
+def delete_product_image(image_id: int, user: models.User, db: Session) -> None:
     image = (
         db.query(models.ProductImage).filter(models.ProductImage.id == image_id).first()
     )
     if not image:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    _require_owned_product(image.product_id, user, db)
     delete_image_file(image.filename)
     db.delete(image)
     db.commit()
 
 
-def get_product_images(product_id: int, db: Session) -> list[models.ProductImage]:
+def _get_product_images(product_id: int, db: Session) -> list[models.ProductImage]:
     return (
         db.query(models.ProductImage)
         .filter(models.ProductImage.product_id == product_id)
         .order_by(models.ProductImage.position)
         .all()
     )
+
+
+def get_public_product_images(
+    product_id: int,
+    db: Session,
+) -> list[models.ProductImage]:
+    _require_public_product(product_id, db)
+    return _get_product_images(product_id, db)
+
+
+def get_owned_product_images(
+    product_id: int,
+    user: models.User,
+    db: Session,
+) -> list[models.ProductImage]:
+    _require_owned_product(product_id, user, db)
+    return _get_product_images(product_id, db)

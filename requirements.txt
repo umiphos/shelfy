@@ -2,6 +2,6 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 psycopg[binary]
-bcrypt
 python-multipart
 pydantic-settings
+PyJWT[crypto]

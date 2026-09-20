@@ -1,0 +1,1 @@
+"""Dependencias compartidas de FastAPI."""

@@ -13,8 +13,8 @@ def generate_slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-def get_catalog_by_user(user_id: int, db: Session) -> models.Catalog | None:
-    return db.query(models.Catalog).filter(models.Catalog.user_id == user_id).first()
+def get_catalog_by_user(user: models.User, db: Session) -> models.Catalog | None:
+    return db.query(models.Catalog).filter(models.Catalog.user_id == user.id).first()
 
 
 def get_public_catalog(slug: str, db: Session) -> models.Catalog:
@@ -24,10 +24,12 @@ def get_public_catalog(slug: str, db: Session) -> models.Catalog:
     return catalog
 
 
-def create_catalog(data: CatalogRequest, db: Session) -> models.Catalog:
-    if not db.query(models.User).filter(models.User.id == data.user_id).first():
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    if get_catalog_by_user(data.user_id, db):
+def create_catalog(
+    data: CatalogRequest,
+    user: models.User,
+    db: Session,
+) -> models.Catalog:
+    if get_catalog_by_user(user, db):
         raise HTTPException(status_code=400, detail="El usuario ya tiene un catálogo")
 
     name = data.name.strip()
@@ -49,7 +51,7 @@ def create_catalog(data: CatalogRequest, db: Session) -> models.Catalog:
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    catalog = models.Catalog(name=name, slug=slug, user_id=data.user_id)
+    catalog = models.Catalog(name=name, slug=slug, user_id=user.id)
     db.add(catalog)
     db.commit()
     db.refresh(catalog)

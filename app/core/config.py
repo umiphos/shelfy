@@ -14,6 +14,9 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
     uploads_dir: Path = Path("uploads")
+    auth0_domain: str = ""
+    auth0_audience: str = ""
+    auth0_algorithms: Annotated[list[str], NoDecode] = ["RS256"]
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -27,6 +30,19 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @field_validator("auth0_algorithms", mode="before")
+    @classmethod
+    def parse_auth0_algorithms(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [
+                algorithm.strip() for algorithm in value.split(",") if algorithm.strip()
+            ]
+        return value
+
+    @property
+    def auth0_issuer(self) -> str:
+        return f"https://{self.auth0_domain.strip('/')}/"
 
     @property
     def product_upload_dir(self) -> Path:

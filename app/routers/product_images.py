@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, File, UploadFile
-from sqlalchemy.orm import Session
+from typing import Annotated
 
-from ..database import get_db
+from fastapi import APIRouter, File, UploadFile
+
+from ..database import DbSession
+from ..dependencies.auth import CurrentUser
 from ..services import image_service
 
 router = APIRouter(prefix="/api/products", tags=["product images"])
@@ -10,10 +12,11 @@ router = APIRouter(prefix="/api/products", tags=["product images"])
 @router.post("/{product_id}/images")
 async def upload_product_image(
     product_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    current_user: CurrentUser,
+    file: Annotated[UploadFile, File()],
+    db: DbSession,
 ):
-    image = await image_service.save_product_image(product_id, file, db)
+    image = await image_service.save_product_image(product_id, file, current_user, db)
     return {
         "id": image.id,
         "product_id": image.product_id,
@@ -23,9 +26,23 @@ async def upload_product_image(
     }
 
 
+@router.get("/public/{product_id}/images")
+def get_public_product_images(product_id: int, db: DbSession):
+    images = image_service.get_public_product_images(product_id, db)
+    return _image_response(images)
+
+
 @router.get("/{product_id}/images")
-def get_product_images(product_id: int, db: Session = Depends(get_db)):
-    images = image_service.get_product_images(product_id, db)
+def get_product_images(
+    product_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    images = image_service.get_owned_product_images(product_id, current_user, db)
+    return _image_response(images)
+
+
+def _image_response(images):
     return [
         {
             "id": image.id,
@@ -38,6 +55,10 @@ def get_product_images(product_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/images/{image_id}")
-def delete_product_image(image_id: int, db: Session = Depends(get_db)):
-    image_service.delete_product_image(image_id, db)
+def delete_product_image(
+    image_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    image_service.delete_product_image(image_id, current_user, db)
     return {"message": "Imagen eliminada"}

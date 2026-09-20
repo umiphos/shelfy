@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from .. import models
-from ..database import get_db
+from ..database import DbSession
 from ..schemas.category import CategoryRequest
+from ..security.auth0 import require_permission
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 
 @router.get("")
-def get_categories(db: Session = Depends(get_db)):
+def get_categories(db: DbSession):
     return (
         db.query(models.Category)
         .filter(models.Category.active.is_(True))
@@ -18,8 +18,8 @@ def get_categories(db: Session = Depends(get_db)):
     )
 
 
-@router.post("")
-def create_category(data: CategoryRequest, db: Session = Depends(get_db)):
+@router.post("", dependencies=[Depends(require_permission("create:categories"))])
+def create_category(data: CategoryRequest, db: DbSession):
     name = data.name.strip()
     if not name:
         raise HTTPException(
