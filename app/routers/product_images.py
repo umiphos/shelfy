@@ -1,9 +1,7 @@
-from typing import Annotated
+from fastapi import APIRouter, Depends, File, UploadFile
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, File, UploadFile
-
-from ..database import DbSession
-from ..dependencies.auth import CurrentUser
+from ..database import get_db
 from ..services import image_service
 
 router = APIRouter(prefix="/api/products", tags=["product images"])
@@ -12,11 +10,10 @@ router = APIRouter(prefix="/api/products", tags=["product images"])
 @router.post("/{product_id}/images")
 async def upload_product_image(
     product_id: int,
-    current_user: CurrentUser,
-    file: Annotated[UploadFile, File()],
-    db: DbSession,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
-    image = await image_service.save_product_image(product_id, file, current_user, db)
+    image = await image_service.save_product_image(product_id, file, db)
     return {
         "id": image.id,
         "product_id": image.product_id,
@@ -26,23 +23,9 @@ async def upload_product_image(
     }
 
 
-@router.get("/public/{product_id}/images")
-def get_public_product_images(product_id: int, db: DbSession):
-    images = image_service.get_public_product_images(product_id, db)
-    return _image_response(images)
-
-
 @router.get("/{product_id}/images")
-def get_product_images(
-    product_id: int,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    images = image_service.get_owned_product_images(product_id, current_user, db)
-    return _image_response(images)
-
-
-def _image_response(images):
+def get_product_images(product_id: int, db: Session = Depends(get_db)):
+    images = image_service.get_product_images(product_id, db)
     return [
         {
             "id": image.id,
@@ -55,10 +38,6 @@ def _image_response(images):
 
 
 @router.delete("/images/{image_id}")
-def delete_product_image(
-    image_id: int,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    image_service.delete_product_image(image_id, current_user, db)
+def delete_product_image(image_id: int, db: Session = Depends(get_db)):
+    image_service.delete_product_image(image_id, db)
     return {"message": "Imagen eliminada"}

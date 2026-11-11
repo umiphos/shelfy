@@ -1,5 +1,5 @@
 from sqlalchemy import ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
 
@@ -12,11 +12,14 @@ class User(Base):
         index=True,
     )
 
-    auth0_subject: Mapped[str] = mapped_column(
+    email: Mapped[str] = mapped_column(
         String,
         unique=True,
         index=True,
-        nullable=False,
+    )
+
+    password: Mapped[str] = mapped_column(
+        String,
     )
 
 
@@ -114,8 +117,6 @@ class Product(Base):
         String,
         nullable=True,
     )
-
-    catalog: Mapped["Catalog"] = relationship()
 
 
 class ProductImage(Base):

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class ProductRequest(BaseModel):
+    catalog_id: int
     name: str
     price: float
     category_id: int

@@ -1,56 +1,38 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-from ..database import DbSession
-from ..dependencies.auth import CurrentUser
+from ..database import get_db
 from ..schemas.product import ProductRequest
 from ..services import product_service
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
 
-@router.get("")
-def get_products(current_user: CurrentUser, db: DbSession):
-    return product_service.get_owned_products(current_user, db)
+@router.get("/{catalog_id}")
+def get_products(catalog_id: int, db: Session = Depends(get_db)):
+    return product_service.get_products(catalog_id, db)
 
 
 @router.post("")
-def create_product(
-    data: ProductRequest,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    return product_service.create_product(data, current_user, db)
+def create_product(data: ProductRequest, db: Session = Depends(get_db)):
+    return product_service.create_product(data, db)
 
 
-@router.get("/public/{product_id}")
-def get_public_product(product_id: int, db: DbSession):
-    return product_service.get_public_product(product_id, db)
-
-
-@router.get("/{product_id}")
-def get_product(
-    product_id: int,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    return product_service.get_owned_product(product_id, current_user, db)
+@router.get("/item/{product_id}")
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    return product_service.get_product(product_id, db)
 
 
 @router.put("/{product_id}")
 def update_product(
     product_id: int,
     data: ProductRequest,
-    current_user: CurrentUser,
-    db: DbSession,
+    db: Session = Depends(get_db),
 ):
-    return product_service.update_product(product_id, data, current_user, db)
+    return product_service.update_product(product_id, data, db)
 
 
 @router.delete("/{product_id}")
-def delete_product(
-    product_id: int,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    product_service.delete_product(product_id, current_user, db)
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    product_service.delete_product(product_id, db)
     return {"message": "Producto eliminado"}
