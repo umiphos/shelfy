@@ -8,6 +8,7 @@ from . import models
 from .core.config import settings
 from .database import Base, SessionLocal, engine
 from .routers import auth, catalogs, categories, health, product_images, products
+from .services.demo_seed_service import seed_demo_data
 
 
 def ensure_default_category() -> None:
@@ -27,6 +28,9 @@ async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     settings.product_upload_dir.mkdir(parents=True, exist_ok=True)
     ensure_default_category()
+    if settings.seed_demo_data:
+        with SessionLocal() as db:
+            seed_demo_data(db, settings.product_upload_dir)
     yield
 
 
