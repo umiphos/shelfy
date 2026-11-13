@@ -130,11 +130,11 @@ def _get_or_create_demo_catalog(db: Session) -> models.Catalog:
 
     user = (
         db.query(models.User)
-        .filter(models.User.auth0_subject == DEMO_USER_SUBJECT)
+        .filter()
         .first()
     )
     if not user:
-        user = models.User(auth0_subject=DEMO_USER_SUBJECT)
+        user = models.User()
         db.add(user)
         db.flush()
 
