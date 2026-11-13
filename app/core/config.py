@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
     uploads_dir: Path = Path("uploads")
+    seed_demo_data: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
